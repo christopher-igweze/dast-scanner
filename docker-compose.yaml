@@ -140,8 +140,13 @@ services:
           echo ">> $$T" >> /reports/scan.log
 
           echo "  [1/3 nmap]" >> /reports/scan.log
+          # Fast service detection on the standard web ports + the few NSE
+          # http scripts that are fast and high-signal. Skip --script=vuln,
+          # which fires per-port deep checks and adds 10-20 min/target.
           docker run --rm -v "$$VOL:/output" instrumentisto/nmap \
-            -sV --script=http-headers,http-enum,vuln \
+            -sV -Pn -p 80,443,8080,8443 \
+            --script=http-headers,http-title,http-server-header,ssl-cert,ssl-enum-ciphers \
+            --host-timeout 180s \
             -oN "/output/$$RUN/$$SAFE/nmap.txt" \
             "$$(echo "$$T" | sed -E 's#^https?://##; s#/.*##')" \
             >> /reports/scan.log 2>&1
