@@ -103,7 +103,13 @@ services:
           while true; do sleep 3600; done
         fi
 
-        for IMG in sullo/nikto projectdiscovery/nuclei:latest zaproxy/zap-stable; do
+        # Discover the actual volume name attached to /reports — Coolify prefixes
+        # named volumes with the application UUID, so we can't hardcode it.
+        VOL=$$(docker inspect "$$(hostname)" -f '{{range .Mounts}}{{if eq .Destination "/reports"}}{{.Name}}{{end}}{{end}}' 2>/dev/null)
+        : "$${VOL:=dast-reports}"
+        echo "[boot] reports volume = $$VOL" >> /reports/scan.log
+
+        for IMG in alpine/nmap projectdiscovery/nuclei:latest zaproxy/zap-stable; do
           if docker pull "$$IMG" >/dev/null 2>&1; then
             echo "[boot] pulled $$IMG" >> /reports/scan.log
           else
@@ -129,28 +135,29 @@ services:
           chmod 0777 "/reports/$$RUN/$$SAFE"
           echo ">> $$T" >> /reports/scan.log
 
-          echo "  [1/3 nikto]" >> /reports/scan.log
-          docker run --rm -v dast-reports:/output sullo/nikto \
-            -h "$$T" -Tuning x6 -maxtime 180s -ask no \
-            -o "/output/$$RUN/$$SAFE/nikto.html" -Format html \
+          echo "  [1/3 nmap]" >> /reports/scan.log
+          docker run --rm -v "$$VOL:/output" alpine/nmap \
+            -sV --script=http-headers,http-enum,vuln \
+            -oN "/output/$$RUN/$$SAFE/nmap.txt" \
+            "$$(echo "$$T" | sed -E 's#^https?://##; s#/.*##')" \
             >> /reports/scan.log 2>&1
 
           echo "  [2/3 nuclei]" >> /reports/scan.log
-          docker run --rm -v dast-reports:/output projectdiscovery/nuclei:latest \
+          docker run --rm -v "$$VOL:/output" projectdiscovery/nuclei:latest \
             -u "$$T" -severity "$$SEVERITY" \
             -o "/output/$$RUN/$$SAFE/nuclei.txt" -stats -nc -silent \
             >> /reports/scan.log 2>&1
 
           if [ "$$ZAP_MODE" = "full" ]; then
             echo "  [3/3 zap-FULL]" >> /reports/scan.log
-            docker run --rm -v dast-reports:/zap/wrk/:rw zaproxy/zap-stable \
+            docker run --rm -v "$$VOL:/zap/wrk/:rw" zaproxy/zap-stable \
               zap-full-scan.py -t "$$T" \
               -r "$$RUN/$$SAFE/zap-full.html" \
               -J "$$RUN/$$SAFE/zap-full.json" \
               >> /reports/scan.log 2>&1
           else
             echo "  [3/3 zap-baseline]" >> /reports/scan.log
-            docker run --rm -v dast-reports:/zap/wrk/:rw zaproxy/zap-stable \
+            docker run --rm -v "$$VOL:/zap/wrk/:rw" zaproxy/zap-stable \
               zap-baseline.py -t "$$T" \
               -r "$$RUN/$$SAFE/zap-baseline.html" \
               -J "$$RUN/$$SAFE/zap-baseline.json" \
