@@ -113,7 +113,7 @@ services:
         : "$${VOL:=dast-reports}"
         echo "[boot] reports volume = $$VOL" >> /reports/scan.log
 
-        for IMG in alpine/nmap projectdiscovery/nuclei:latest zaproxy/zap-stable; do
+        for IMG in instrumentisto/nmap projectdiscovery/nuclei:latest zaproxy/zap-stable; do
           if docker pull "$$IMG" >/dev/null 2>&1; then
             echo "[boot] pulled $$IMG" >> /reports/scan.log
           else
@@ -140,7 +140,7 @@ services:
           echo ">> $$T" >> /reports/scan.log
 
           echo "  [1/3 nmap]" >> /reports/scan.log
-          docker run --rm -v "$$VOL:/output" alpine/nmap \
+          docker run --rm -v "$$VOL:/output" instrumentisto/nmap \
             -sV --script=http-headers,http-enum,vuln \
             -oN "/output/$$RUN/$$SAFE/nmap.txt" \
             "$$(echo "$$T" | sed -E 's#^https?://##; s#/.*##')" \
