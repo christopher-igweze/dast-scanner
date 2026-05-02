@@ -68,7 +68,7 @@ services:
         exec nginx -g 'daemon off;'
 
   scanner:
-    image: docker:27-cli-alpine3.20
+    image: docker:cli
     restart: unless-stopped
     environment:
       - TARGETS=${TARGETS:-https://expediotechnologies.com,https://admin.expediotechnologies.com,https://dashboard.expediotechnologies.com}
