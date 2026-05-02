@@ -27,6 +27,17 @@ services:
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-changeme-please}
     volumes:
       - dast-reports:/usr/share/nginx/html:ro
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.dast-reports-https.rule=Host(`bhhccqvsghsmy5kxpak518fi.verstandai.site`)"
+      - traefik.http.routers.dast-reports-https.entryPoints=https
+      - traefik.http.routers.dast-reports-https.tls=true
+      - traefik.http.routers.dast-reports-https.tls.certresolver=letsencrypt
+      - "traefik.http.routers.dast-reports-http.rule=Host(`bhhccqvsghsmy5kxpak518fi.verstandai.site`)"
+      - traefik.http.routers.dast-reports-http.entryPoints=http
+      - traefik.http.routers.dast-reports-http.middlewares=redirect-to-https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.services.dast-reports.loadbalancer.server.port=80
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/healthz"]
       interval: 30s
