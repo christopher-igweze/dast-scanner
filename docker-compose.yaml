@@ -23,8 +23,9 @@ services:
     restart: unless-stopped
     environment:
       - SERVICE_FQDN_REPORTS_80
-      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-admin}
-      - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-changeme-please}
+      # base64-encoded htpasswd line, e.g. base64 of "admin:$apr1$xxxx$yyyy"
+      # Generate with: printf 'user:%s\n' "$(openssl passwd -apr1 'yourpass')" | base64
+      - HTPASSWD_B64=${HTPASSWD_B64}
     volumes:
       - dast-reports:/usr/share/nginx/html:ro
     labels:
@@ -72,10 +73,9 @@ services:
           }
         }
         NGINX
-        printf '%s:%s\n' "$$BASIC_AUTH_USER" "$$(openssl passwd -apr1 "$$BASIC_AUTH_PASS")" \
-          > /etc/nginx/.htpasswd
+        echo "$$HTPASSWD_B64" | base64 -d > /etc/nginx/.htpasswd
         chmod 0644 /etc/nginx/.htpasswd
-        echo "[init] nginx ready (user=$$BASIC_AUTH_USER)"
+        echo "[init] nginx ready (htpasswd=$$(wc -c < /etc/nginx/.htpasswd) bytes)"
         exec nginx -g 'daemon off;'
 
   scanner:
