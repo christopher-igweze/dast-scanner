@@ -95,6 +95,10 @@ services:
         set +e
         mkdir -p /reports && chmod 0777 /reports
 
+        # Remove stock nginx welcome page that Docker copied into the volume
+        # on first mount, so nginx's autoindex shows scan run dirs.
+        rm -f /reports/index.html /reports/50x.html
+
         echo "[boot $$(date -u)] scanner up; targets=$$TARGETS severity=$$SEVERITY zap_mode=$$ZAP_MODE" \
           >> /reports/scan.log
 
